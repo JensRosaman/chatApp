@@ -1,4 +1,5 @@
 using Microsoft.VisualBasic.ApplicationServices;
+using System;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
@@ -20,7 +21,7 @@ namespace chatKlient
         }
 
 
-        private void btnSkicka_Click(object sender, EventArgs e)
+        private async void btnSkicka_Click(object sender, EventArgs e)
         {
             string message = txtSendBox.Text;
             if (!string.IsNullOrWhiteSpace(message))
@@ -28,7 +29,7 @@ namespace chatKlient
                 try
                 {
                     byte[] data = Encoding.UTF8.GetBytes(message);
-                    stream.Write(data, 0, data.Length);
+                    await client.GetStream().WriteAsync(data, 0, data.Length);
                     DisplayMessage("Du: " + message);
                     txtSendBox.Text = "";
 
@@ -36,6 +37,8 @@ namespace chatKlient
                 catch (Exception ex)
                 {
                     MessageBox.Show("Error sending message: " + ex.Message);
+                    DisconnectFromServer();
+                    ConnectToServer();
                 }
                 finally
                 {
@@ -47,27 +50,32 @@ namespace chatKlient
                 MessageBox.Show("Please enter a message.");
             }
         }
-        private void ReceiveMessage()
+        private async Task ReceiveMessage()
         {
             try
             {
-                byte[] bytes = new byte[256];
-                int i;
-                StringBuilder data = new StringBuilder();
+                byte[] buffer = new byte[1024];
+               
 
-                while (client.Connected && (i = stream.Read(bytes, 0, bytes.Length)) != 0)
+                
+                while (client.Connected)
                 {
-                    data.Append(Encoding.UTF8.GetString(bytes, 0, i));
-                    string receivedMessage = data.ToString();
-                    DisplayMessage(receivedMessage);
-                    data.Clear(); // Clear the StringBuilder for the next message
-                }
 
-                if (!client.Connected)
-                {
-                    // If client is no longer connected, display a message indicating disconnection
-                    DisplayMessage("Disconnected from server.");
+                    int n = await stream.ReadAsync(buffer, 0, buffer.Length); // metoden kör på sin egna tråd så den kan blocka den utan problem
+                    if (n == 0) break; // Connection closed.
+                    string inp = Encoding.UTF8.GetString(buffer, 0, n).Trim();
+                    if (inp == "")
+                        continue;
+                    if (inp.StartsWith("-IMG;")) //inp.Split(';')[0] == "-IMG"
+                    {
+                        await ReciveImage(client, int.Parse(inp.Split(';')[1]));
+                        continue;
+                    }
+                        
+                    DisplayMessage(inp);
+                        
                 }
+                
             }
             catch (Exception ex)
             {
@@ -109,7 +117,7 @@ namespace chatKlient
             }
             else
             {
-                BackColor = Color.Red;
+                
                 if (linkActions.TryGetValue(e.LinkText, out ImageMsg i))
                 {
 
@@ -126,8 +134,8 @@ namespace chatKlient
             {
                 client = new TcpClient("127.0.0.1", 12345);
                 stream = client.GetStream();
-                Thread receiveThread = new Thread(new ThreadStart(ReceiveMessage));
-                receiveThread.Start();
+                Task.Run(ReceiveMessage);
+                
             }
             catch (Exception ex)
             {
@@ -147,7 +155,7 @@ namespace chatKlient
 
 
                 byte[] data = Encoding.UTF8.GetBytes(userId);
-                stream.Write(data, 0, data.Length);
+                await stream.WriteAsync(data, 0, data.Length);
                 button1.Enabled = false;
                 button1.Text = "Ansluten";
                 byte[] bytes = new byte[256];
@@ -166,6 +174,8 @@ namespace chatKlient
                 stream.Close();
             if (client != null)
                 client.Close();
+            button1.Enabled = true;
+            button1.Text = "Anslut";
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
@@ -216,33 +226,51 @@ namespace chatKlient
             try
             {
 
-                //byte[] prefix = Convert.FromBase64String("IMG;");
-                var data = new Data
-                {
-                    Message = imageBytes,
-                    IsImg = true
-                };
-                String json = JsonSerializer.Serialize(data);
-                byte[] buffer = Encoding.UTF8.GetBytes(json);
-                // byte[] combinedBytes = new byte[prefix.Length + imageBytes.Length];
-                // Buffer.BlockCopy(prefix, 0, combinedBytes, 0, prefix.Length);
-                // Buffer.BlockCopy(imageBytes, 0, combinedBytes, prefix.Length, imageBytes.Length);
-
-
-                //AddLink(Image.FromStream(new MemoryStream(Convert.FromBase64String(System.Convert.ToBase64String(combinedBytes).Split(';')[1]))));
-                // Send the actual image bytes
-                stream.WriteAsync(buffer, 0, buffer.Length);
+                byte[] buffer = Encoding.UTF8.GetBytes("-IMG;" + imageBytes.Length.ToString());
+                await stream.WriteAsync(buffer, 0, buffer.Length);
+                stream.WriteAsync(imageBytes, 0, imageBytes.Length);
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Error sending image: " + ex.Message);
             }
         }
+        private async Task ReciveImage(TcpClient client, int imageSize)
+        {
+
+            NetworkStream stream = client.GetStream();
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            int totalBytesRead = 0;
+
+            using (MemoryStream ms = new MemoryStream())
+            {
+                while (totalBytesRead < imageSize)
+                {
+                    int bytesToRead = Math.Min(buffer.Length, imageSize - totalBytesRead);
+                    bytesRead = await stream.ReadAsync(buffer, 0, bytesToRead);
+
+                    if (bytesRead == 0) break; // Connection closed
+
+                    ms.Write(buffer, 0, bytesRead);
+                    totalBytesRead += bytesRead;
+                }
+
+                if (totalBytesRead == imageSize)
+                {
+                    ms.Position = 0;
+
+                    AddLink(Image.FromStream(ms));
+
+                }
+                else
+                {
+                    // Handle incomplete image data
+                    MessageBox.Show("Incomplete image data received.", Text);
+                }
+            }
+
+        }
     }
-    public class Data
-    {
-        
-        public byte[] Message { get; set; }
-        public bool IsImg { get; set; }
-    }
+    
 }

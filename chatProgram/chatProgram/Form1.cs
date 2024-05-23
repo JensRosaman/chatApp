@@ -5,15 +5,16 @@ using System.Windows.Forms;
 using System.IO;
 using System.Text.Json;
 using System.Xml.Linq;
+using System;
 
 namespace chatProgram
 {
     public partial class Form1 : Form
     {
         TcpListener lyssnare;
-        TcpClient klient;
+        TcpClient client;
         int port = 12345;
-        private Dictionary<TcpClient, string> anvKarta = new Dictionary<TcpClient, string>();
+        private Dictionary<TcpClient, string> idClient = new Dictionary<TcpClient, string>();
         public Form1()
         {
             InitializeComponent();
@@ -42,11 +43,11 @@ namespace chatProgram
         {
             while (true)
             {
-                klient = await lyssnare.AcceptTcpClientAsync();
-                string användarnamn = await TaEmotAnvnamn(klient);
-                anvKarta[klient] = användarnamn;
-                UppdateraAnslutnaKlienter();
-                HanteraKlient(klient);
+                client = await lyssnare.AcceptTcpClientAsync();
+                string id = await TaEmotAnvnamn(client);
+                idClient[client] = id;
+                UpdateClients();
+                Hanteraclient(client);
             }
         }
 
@@ -60,63 +61,108 @@ namespace chatProgram
             return username;
         }
 
-        private async void HanteraKlient(TcpClient klient)
+        private async Task Hanteraclient(TcpClient client)
         {
-            byte[] buffert = new byte[10024];
+            byte[] buffer = new byte[1024];
             int n;
-            if (klient.Connected)
+            if (client.Connected)
             {
                 try
                 {
-                    while ((n = await klient.GetStream().ReadAsync(buffert, 0, buffert.Length)) != 0)
+
+
+                    while (client.Connected)
                     {
+                        using (NetworkStream stream = client.GetStream())
+                        {
 
-                        
 
-                            // Convert the byte array to a JSON string
-                            string json = Encoding.UTF8.GetString(buffert);
 
-                            // Deserialize the JSON string to a MyData object
-                            Data data = JsonSerializer.Deserialize<Data>(json);
+                            n = await stream.ReadAsync(buffer, 0, buffer.Length);
+                            if (n == 0) break; // Connection closed.
+                            string inp = Encoding.UTF8.GetString(buffer, 0, n).Trim();
 
-                            if (data != null && data.IsImg)
+                            if (inp.Split(';')[0] == "-IMG")
                             {
-                                // Convert the byte array back to an image
-                                using (MemoryStream imgStream = new MemoryStream(data.Message))
-                                {
-                                    Image image = Image.FromStream(imgStream);
+                                await ReciveImage(client, int.Parse(inp.Split(';')[1]));
 
-                                    // Save the image to a file (or process it as needed)
-                                    BackgroundImage = image;
-
-                                }
+                                continue;
                             }
-                            string inp = Encoding.UTF8.GetString(buffert, 0, n);
-                            string meddelande = anvKarta[klient] + ": " + inp;
-                            LoggaMeddelande(meddelande)
-                            SynkaMeddelandenMedKlienter(klient, meddelande);
-                        
+
+                            string message = idClient[client] + ": " + inp;
+                            LogMessage(message);
+                            Broadcast(client, message);
+                        }
                     }
+                    // användaren är inte ansluten
+                    if (idClient.ContainsKey(client))
+                    {
+                        Broadcast(client, $"{idClient[client]} lämnade chatrummet.");
+                        LogMessage($"{idClient[client]} lämnade chatrummet.");
+                        idClient.Remove(client);
+                    }
+
+                    client.Close();
+                    UpdateClients();
+
                 }
+
                 catch (Exception error) { MessageBox.Show(error.Message, Text); }
                 finally
                 {
-                    SynkaMeddelandenMedKlienter(klient, $"{anvKarta[klient]} lämnade chatrummet.");
-                    LoggaMeddelande($"{anvKarta[klient]} lämnade chatrummet.");
 
-                    if (anvKarta.ContainsKey(klient))
+
+                    if (idClient.ContainsKey(client))
                     {
-                        anvKarta.Remove(klient);
+                        Broadcast(client, $"{idClient[client]} lämnade chatrummet.");
+                        LogMessage($"{idClient[client]} lämnade chatrummet.");
+                        idClient.Remove(client);
                     }
 
-                    klient.Close();
-                    UppdateraAnslutnaKlienter();
+                    client.Close();
+                    UpdateClients();
                 }
             }
 
         }
 
-        private void LoggaMeddelande(string meddelande)
+        private async Task ReciveImage(TcpClient client, int imageSize) {
+
+            NetworkStream stream = client.GetStream();
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            int totalBytesRead = 0;
+
+            using (MemoryStream ms = new MemoryStream())
+            {
+                while (totalBytesRead < imageSize)
+                {
+                    int bytesToRead = Math.Min(buffer.Length, imageSize - totalBytesRead);
+                    bytesRead = await stream.ReadAsync(buffer, 0, bytesToRead);
+
+                    if (bytesRead == 0) break; // Connection closed
+
+                    ms.Write(buffer, 0, bytesRead);
+                    totalBytesRead += bytesRead;
+                }
+
+                if (totalBytesRead == imageSize)
+                {
+                    ms.Position = 0;
+                    
+                    Broadcast(sender: client, img: Image.FromStream(ms));
+                    
+                }
+                else
+                {
+                    // Handle incomplete image data
+                    MessageBox.Show("Incomplete image data received.", Text);
+                }
+            }
+            
+        }
+
+        private void LogMessage(string meddelande)
         {
             if (tbxInkorg.InvokeRequired)
             {
@@ -129,7 +175,7 @@ namespace chatProgram
         }
 
 
-        public async void StartaLäsning(TcpClient k)
+        public async Task StartaLäsning(TcpClient k)
         {
             byte[] buffert = new byte[1024];
             int n = 0;
@@ -144,30 +190,49 @@ namespace chatProgram
             StartaLäsning(k);
         }
 
-        async void SynkaMeddelandenMedKlienter(TcpClient avsändare, string meddelande)
+        async Task Broadcast(TcpClient avsändare, string meddelande)
         {
             byte[] buffer = Encoding.UTF8.GetBytes(meddelande);
-            foreach (var klient in anvKarta.Keys)
+            foreach (var client in idClient.Keys)
             {
-                if (klient != avsändare && klient != null)
-                    await klient.GetStream().WriteAsync(buffer, 0, buffer.Length);
+                if (client != avsändare && client != null && client.Connected)
+                    await client.GetStream().WriteAsync(buffer, 0, buffer.Length);
             }
         }
 
-        void UppdateraAnslutnaKlienter()
+        // overload to send an image to all clients
+        async Task Broadcast(TcpClient sender, Image img)
+        {
+           
+            byte[] imageBytes;
+            using (MemoryStream ms = new MemoryStream())
+            {
+                img.Save(ms, img.RawFormat);
+                imageBytes = ms.ToArray();
+            }
+            byte[] buffer = Encoding.UTF8.GetBytes("-IMG;" + imageBytes.Length.ToString());
+
+            using (NetworkStream stream = client.GetStream())
+            {
+                foreach (TcpClient client in idClient.Keys)
+                {
+                    if (client != sender && client != null)
+                    {
+                        await stream.WriteAsync(buffer, 0, buffer.Length);
+                        await stream.WriteAsync(imageBytes, 0, imageBytes.Length);
+                    }
+                }
+            }
+        }
+        void UpdateClients()
         {
             klienterRichtxtbx.Text = "";
-            foreach (String användarnamn in anvKarta.Values)
+            foreach (String id in idClient.Values)
             {
-                LoggaMeddelande(användarnamn);
+                LogMessage(id);
             }
         }
     }
-    public class Data
-    {
-
-        public byte[] Message { get; set; }
-        public bool IsImg { get; set; }
-    }
+    
 
 }
