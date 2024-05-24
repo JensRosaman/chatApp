@@ -29,7 +29,7 @@ namespace chatKlient
                 try
                 {
                     byte[] data = Encoding.UTF8.GetBytes(message);
-                    await client.GetStream().WriteAsync(data, 0, data.Length);
+                    await stream.WriteAsync(data, 0, data.Length);
                     DisplayMessage("Du: " + message);
                     txtSendBox.Text = "";
 
@@ -68,7 +68,7 @@ namespace chatKlient
                         continue;
                     if (inp.StartsWith("-IMG;")) //inp.Split(';')[0] == "-IMG"
                     {
-                        await ReciveImage(client, int.Parse(inp.Split(';')[1]));
+                        await ReciveImage(int.Parse(inp.Split(';')[1]));
                         continue;
                     }
                         
@@ -226,19 +226,18 @@ namespace chatKlient
             try
             {
 
-                byte[] buffer = Encoding.UTF8.GetBytes("-IMG;" + imageBytes.Length.ToString());
+                byte[] buffer = Encoding.UTF8.GetBytes("-IMG;" + imageBytes.Length.ToString() + $";{usernameTxtbox}");
                 await stream.WriteAsync(buffer, 0, buffer.Length);
-                stream.WriteAsync(imageBytes, 0, imageBytes.Length);
+                await stream.WriteAsync(imageBytes, 0, imageBytes.Length);
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Error sending image: " + ex.Message);
             }
         }
-        private async Task ReciveImage(TcpClient client, int imageSize)
+        private async Task ReciveImage(int imageSize)
         {
 
-            NetworkStream stream = client.GetStream();
             byte[] buffer = new byte[1024];
             int bytesRead;
             int totalBytesRead = 0;

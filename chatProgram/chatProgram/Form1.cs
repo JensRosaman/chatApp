@@ -73,31 +73,30 @@ namespace chatProgram
 
                     while (client.Connected)
                     {
-                        using (NetworkStream stream = client.GetStream())
+                        
+
+
+
+                        n = await client.GetStream().ReadAsync(buffer, 0, buffer.Length);
+                        if (n == 0) break; // Connection closed.
+                        string inp = Encoding.UTF8.GetString(buffer, 0, n).Trim();
+
+                        if (inp.Split(';')[0] == "-IMG")
                         {
+                            await ReciveImage(client, int.Parse(inp.Split(';')[1]));
 
-
-
-                            n = await stream.ReadAsync(buffer, 0, buffer.Length);
-                            if (n == 0) break; // Connection closed.
-                            string inp = Encoding.UTF8.GetString(buffer, 0, n).Trim();
-
-                            if (inp.Split(';')[0] == "-IMG")
-                            {
-                                await ReciveImage(client, int.Parse(inp.Split(';')[1]));
-
-                                continue;
-                            }
-
-                            string message = idClient[client] + ": " + inp;
-                            LogMessage(message);
-                            Broadcast(client, message);
+                            continue;
                         }
+
+                        string message = idClient[client] + ": " + inp;
+                        LogMessage(message);
+                        await Broadcast(client, message);
+                        
                     }
                     // användaren är inte ansluten
                     if (idClient.ContainsKey(client))
                     {
-                        Broadcast(client, $"{idClient[client]} lämnade chatrummet.");
+                        await Broadcast(client, $"{idClient[client]} lämnade chatrummet.");
                         LogMessage($"{idClient[client]} lämnade chatrummet.");
                         idClient.Remove(client);
                     }
@@ -212,17 +211,16 @@ namespace chatProgram
             }
             byte[] buffer = Encoding.UTF8.GetBytes("-IMG;" + imageBytes.Length.ToString());
 
-            using (NetworkStream stream = client.GetStream())
+            
+            foreach (TcpClient client in idClient.Keys)
             {
-                foreach (TcpClient client in idClient.Keys)
+                if (client != sender && client != null)
                 {
-                    if (client != sender && client != null)
-                    {
-                        await stream.WriteAsync(buffer, 0, buffer.Length);
-                        await stream.WriteAsync(imageBytes, 0, imageBytes.Length);
-                    }
+                    await client.GetStream().WriteAsync(buffer, 0, buffer.Length);
+                    await client.GetStream().WriteAsync(imageBytes, 0, imageBytes.Length);
                 }
             }
+            
         }
         void UpdateClients()
         {

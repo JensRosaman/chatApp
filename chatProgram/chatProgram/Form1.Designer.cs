@@ -36,9 +36,10 @@
             // btnStarta
             // 
             btnStarta.BackColor = SystemColors.ButtonFace;
-            btnStarta.Location = new Point(327, 183);
+            btnStarta.Location = new Point(467, 305);
+            btnStarta.Margin = new Padding(4, 5, 4, 5);
             btnStarta.Name = "btnStarta";
-            btnStarta.Size = new Size(156, 60);
+            btnStarta.Size = new Size(223, 100);
             btnStarta.TabIndex = 0;
             btnStarta.Text = "starta";
             btnStarta.UseVisualStyleBackColor = false;
@@ -46,28 +47,31 @@
             // 
             // tbxInkorg
             // 
-            tbxInkorg.Location = new Point(327, 249);
+            tbxInkorg.Location = new Point(467, 415);
+            tbxInkorg.Margin = new Padding(4, 5, 4, 5);
             tbxInkorg.Name = "tbxInkorg";
-            tbxInkorg.Size = new Size(156, 23);
+            tbxInkorg.Size = new Size(221, 31);
             tbxInkorg.TabIndex = 1;
             // 
             // klienterRichtxtbx
             // 
-            klienterRichtxtbx.Location = new Point(12, 12);
+            klienterRichtxtbx.Location = new Point(17, 20);
+            klienterRichtxtbx.Margin = new Padding(4, 5, 4, 5);
             klienterRichtxtbx.Name = "klienterRichtxtbx";
-            klienterRichtxtbx.Size = new Size(236, 426);
+            klienterRichtxtbx.Size = new Size(335, 707);
             klienterRichtxtbx.TabIndex = 2;
             klienterRichtxtbx.Text = "";
             // 
             // Form1
             // 
-            AutoScaleDimensions = new SizeF(7F, 15F);
+            AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
-            BackColor = Color.DarkOliveGreen;
-            ClientSize = new Size(800, 450);
+            BackColor = Color.Ivory;
+            ClientSize = new Size(1143, 750);
             Controls.Add(klienterRichtxtbx);
             Controls.Add(tbxInkorg);
             Controls.Add(btnStarta);
+            Margin = new Padding(4, 5, 4, 5);
             Name = "Form1";
             Text = "Form1";
             ResumeLayout(false);
