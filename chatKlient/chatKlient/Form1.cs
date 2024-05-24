@@ -13,6 +13,7 @@ namespace chatKlient
     {
         private TcpClient client;
         private NetworkStream stream;
+        private string userId;
         private Dictionary<string, ImageMsg> linkActions = new Dictionary<string, ImageMsg>();
         public Form1()
         {
@@ -149,7 +150,7 @@ namespace chatKlient
 
 
             ConnectToServer();
-            string userId = !string.IsNullOrEmpty(usernameTxtbox.Text) ? usernameTxtbox.Text : DateTime.Now.ToString();
+            userId = !string.IsNullOrEmpty(usernameTxtbox.Text) ? usernameTxtbox.Text : DateTime.Now.ToString();
             try
             {
 
@@ -226,7 +227,7 @@ namespace chatKlient
             try
             {
 
-                byte[] buffer = Encoding.UTF8.GetBytes("-IMG;" + imageBytes.Length.ToString() + $";{usernameTxtbox}");
+                byte[] buffer = Encoding.UTF8.GetBytes("-IMG;" + imageBytes.Length.ToString() + $";{userId}");
                 await stream.WriteAsync(buffer, 0, buffer.Length);
                 await stream.WriteAsync(imageBytes, 0, imageBytes.Length);
             }
