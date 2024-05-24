@@ -121,4 +121,7 @@
   <data name="Skärmbild 2024-05-21 152925" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Skärmbild 2024-05-21 152925.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="20231207_221449" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\20231207_221449.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
 </root>

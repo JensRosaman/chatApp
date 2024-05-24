@@ -63,6 +63,16 @@ namespace chatKlient.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap _20231207_221449 {
+            get {
+                object obj = ResourceManager.GetObject("20231207_221449", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap Skärmbild_2024_05_21_152925 {
             get {
                 object obj = ResourceManager.GetObject("Skärmbild 2024-05-21 152925", resourceCulture);

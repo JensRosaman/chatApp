@@ -25,6 +25,7 @@ namespace chatProgram
             try
             {
                 lyssnare = new TcpListener(IPAddress.Any, port);
+
                 lyssnare.Start();
             }
             catch (Exception error)
@@ -34,6 +35,7 @@ namespace chatProgram
             }
 
             btnStarta.Enabled = false;
+            btnStarta.Text = "Startad";
             await StartaMottagning();
         }
 
@@ -73,7 +75,7 @@ namespace chatProgram
 
                     while (client.Connected)
                     {
-                        
+
 
 
 
@@ -83,31 +85,31 @@ namespace chatProgram
 
                         if (inp.StartsWith("-IMG"))
                         {
-                           byte[]? img = await ReciveImage(client, int.Parse(inp.Split(';')[1]));
-                           if (img != null)
-                           {
+                            byte[]? img = await ReciveImage(client, int.Parse(inp.Split(';')[1]));
+                            if (img != null)
+                            {
                                 await BroadcastImage(client, inp, img);
-                           }
-                          
-                           continue;
+                            }
+
+                            continue;
                         }
 
                         string message = idClient[client] + ": " + inp;
                         LogMessage(message);
                         await Broadcast(client, message);
-                        
+
                     }
                     // användaren är inte ansluten längre
                     string id = idClient.GetValueOrDefault(client, "okänd");
-                    
+
                     await Broadcast(client, $"{id} lämnade chatrummet.");
                     LogMessage($"{id} lämnade chatrummet.");
                     if (idClient.ContainsKey(client))
                     {
                         idClient.Remove(client);
                     }
-                    
-                    
+
+
 
                     client.Close();
                     UpdateClients();
@@ -133,7 +135,8 @@ namespace chatProgram
 
         }
 
-        private async Task<Byte[]?> ReciveImage(TcpClient client, int imageSize) {
+        private async Task<Byte[]?> ReciveImage(TcpClient client, int imageSize)
+        {
 
             byte[] buffer = new byte[1024];
             byte[] imageBytes = new byte[imageSize];
@@ -168,7 +171,7 @@ namespace chatProgram
             }
             catch (Exception ex)
             {
-                await Broadcast(client,$"An error occurred: {ex.Message}");
+                await Broadcast(client, $"An error occurred: {ex.Message}");
                 return null;
             }
 
@@ -188,7 +191,7 @@ namespace chatProgram
         }
 
 
-      
+
         async Task Broadcast(TcpClient avsändare, string meddelande)
         {
             byte[] buffer = Encoding.UTF8.GetBytes(meddelande);
@@ -200,14 +203,14 @@ namespace chatProgram
         }
 
         // overload to send an image to all clients
-        async Task BroadcastImage(TcpClient sender,String meta, byte[] imageBytes)
+        async Task BroadcastImage(TcpClient sender, String meta, byte[] imageBytes)
         {
 
-           
-           
+
+
             byte[] buffer = Encoding.UTF8.GetBytes(meta);
 
-            
+
             foreach (TcpClient client in idClient.Keys)
             {
                 if (client != sender && client != null)
@@ -216,25 +219,25 @@ namespace chatProgram
                     await client.GetStream().WriteAsync(imageBytes, 0, imageBytes.Length);
                 }
             }
-            
+
         }
         void UpdateClients()
         {
-            klienterRichtxtbx.Text = "";
+            clientsTbx.Text = "";
             foreach (String id in idClient.Values)
             {
-                
-                if (klienterRichtxtbx.InvokeRequired)
+
+                if (clientsTbx.InvokeRequired)
                 {
-                    klienterRichtxtbx.Invoke(new MethodInvoker(delegate { tbxInkorg.AppendText(id + Environment.NewLine); }));
+                    clientsTbx.Invoke(new MethodInvoker(delegate { clientsTbx.AppendText(id + Environment.NewLine); }));
                 }
                 else
                 {
-                    klienterRichtxtbx.AppendText(id + Environment.NewLine);
+                    clientsTbx.AppendText(id + Environment.NewLine);
                 }
             }
         }
     }
-    
+
 
 }

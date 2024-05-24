@@ -116,7 +116,7 @@ namespace chatKlient
         }
         private void chatWin_LinkClicked(object? sender, LinkClickedEventArgs e)
         {
-            BackColor = Color.Azure;
+
             if (InvokeRequired)
             {
                 Invoke(new MethodInvoker(delegate { chatWin_LinkClicked(sender, e); }));
@@ -138,14 +138,18 @@ namespace chatKlient
         {
             try
             {
-                client = new TcpClient("127.0.0.1", 12345);
+                IPAdressTxtbx.ReadOnly = true;
+                IPAdressTxtbx.Enabled = false;
+                portTxtbx.Enabled = false;
+                portTxtbx.ReadOnly = true;
+                client = new TcpClient(IPAdressTxtbx.Text, int.Parse(portTxtbx.Text));
                 stream = client.GetStream();
                 Task.Run(ReceiveMessage);
 
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error connecting to server: " + ex.Message);
+                MessageBox.Show("Problem med att anslutna kontrollera port och ip: " + ex.Message);
             }
         }
 
@@ -163,7 +167,11 @@ namespace chatKlient
                 byte[] data = Encoding.UTF8.GetBytes(userId);
                 await stream.WriteAsync(data, 0, data.Length);
                 connectBtn.Enabled = false;
+                usernameTxtbox.ReadOnly = true;
+                usernameTxtbox.Enabled = false;
                 connectBtn.Text = "Ansluten";
+                var remoteEndPoint = client.Client.RemoteEndPoint as System.Net.IPEndPoint;
+                Text += $" Ansluten som {userId} på {remoteEndPoint?.Address.ToString() ?? "okändip"}:{remoteEndPoint?.Port ?? 0}";
                 byte[] bytes = new byte[256];
                 int bytesRead = await stream.ReadAsync(bytes, 0, bytes.Length);
                 chatWin.Text = Encoding.UTF8.GetString(bytes, 0, bytesRead);
