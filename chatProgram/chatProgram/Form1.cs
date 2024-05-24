@@ -47,7 +47,7 @@ namespace chatProgram
                 string id = await TaEmotAnvnamn(client);
                 idClient[client] = id;
                 UpdateClients();
-                Hanteraclient(client);
+                _ = Hanteraclient(client);
             }
         }
 
@@ -81,11 +81,15 @@ namespace chatProgram
                         if (n == 0) break; // Connection closed.
                         string inp = Encoding.UTF8.GetString(buffer, 0, n).Trim();
 
-                        if (inp.Split(';')[0] == "-IMG")
+                        if (inp.StartsWith("-IMG"))
                         {
-                            await ReciveImage(client, int.Parse(inp.Split(';')[1]));
-
-                            continue;
+                           byte[]? img = await ReciveImage(client, int.Parse(inp.Split(';')[1]));
+                           if (img != null)
+                           {
+                                await BroadcastImage(client, inp, img);
+                           }
+                          
+                           continue;
                         }
 
                         string message = idClient[client] + ": " + inp;
@@ -93,13 +97,17 @@ namespace chatProgram
                         await Broadcast(client, message);
                         
                     }
-                    // användaren är inte ansluten
+                    // användaren är inte ansluten längre
+                    string id = idClient.GetValueOrDefault(client, "okänd");
+                    
+                    await Broadcast(client, $"{id} lämnade chatrummet.");
+                    LogMessage($"{id} lämnade chatrummet.");
                     if (idClient.ContainsKey(client))
                     {
-                        await Broadcast(client, $"{idClient[client]} lämnade chatrummet.");
-                        LogMessage($"{idClient[client]} lämnade chatrummet.");
                         idClient.Remove(client);
                     }
+                    
+                    
 
                     client.Close();
                     UpdateClients();
@@ -113,7 +121,7 @@ namespace chatProgram
 
                     if (idClient.ContainsKey(client))
                     {
-                        Broadcast(client, $"{idClient[client]} lämnade chatrummet.");
+                        await Broadcast(client, $"{idClient[client]} lämnade chatrummet.");
                         LogMessage($"{idClient[client]} lämnade chatrummet.");
                         idClient.Remove(client);
                     }
@@ -125,40 +133,46 @@ namespace chatProgram
 
         }
 
-        private async Task ReciveImage(TcpClient client, int imageSize) {
+        private async Task<Byte[]?> ReciveImage(TcpClient client, int imageSize) {
 
-            NetworkStream stream = client.GetStream();
             byte[] buffer = new byte[1024];
+            byte[] imageBytes = new byte[imageSize];
             int bytesRead;
             int totalBytesRead = 0;
 
-            using (MemoryStream ms = new MemoryStream())
+
+            try
             {
                 while (totalBytesRead < imageSize)
                 {
                     int bytesToRead = Math.Min(buffer.Length, imageSize - totalBytesRead);
-                    bytesRead = await stream.ReadAsync(buffer, 0, bytesToRead);
+                    bytesRead = await client.GetStream().ReadAsync(buffer, 0, bytesToRead);
 
-                    if (bytesRead == 0) break; // Connection closed
+                    if (bytesRead == 0)
+                        break; // Connection closed
 
-                    ms.Write(buffer, 0, bytesRead);
+                    Buffer.BlockCopy(buffer, 0, imageBytes, totalBytesRead, bytesRead);
                     totalBytesRead += bytesRead;
                 }
 
                 if (totalBytesRead == imageSize)
                 {
-                    ms.Position = 0;
-                    
-                    Broadcast(sender: client, img: Image.FromStream(ms));
-                    
+                    return imageBytes;
                 }
                 else
                 {
                     // Handle incomplete image data
-                    MessageBox.Show("Incomplete image data received.", Text);
+                    MessageBox.Show("Incomplete image data received.", "Error");
+                    return null;
                 }
             }
-            
+            catch (Exception ex)
+            {
+                await Broadcast(client,$"An error occurred: {ex.Message}");
+                return null;
+            }
+
+
         }
 
         private void LogMessage(string meddelande)
@@ -174,21 +188,7 @@ namespace chatProgram
         }
 
 
-        public async Task StartaLäsning(TcpClient k)
-        {
-            byte[] buffert = new byte[1024];
-            int n = 0;
-            try
-            {
-                n = await k.GetStream().ReadAsync(buffert, 0, buffert.Length);
-            }
-            catch (Exception error) { MessageBox.Show(error.Message, Text); return; }
-
-            tbxInkorg.AppendText(Encoding.UTF8.GetString(buffert, 0, n));
-
-            StartaLäsning(k);
-        }
-
+      
         async Task Broadcast(TcpClient avsändare, string meddelande)
         {
             byte[] buffer = Encoding.UTF8.GetBytes(meddelande);
@@ -200,16 +200,12 @@ namespace chatProgram
         }
 
         // overload to send an image to all clients
-        async Task Broadcast(TcpClient sender, Image img)
+        async Task BroadcastImage(TcpClient sender,String meta, byte[] imageBytes)
         {
+
            
-            byte[] imageBytes;
-            using (MemoryStream ms = new MemoryStream())
-            {
-                img.Save(ms, img.RawFormat);
-                imageBytes = ms.ToArray();
-            }
-            byte[] buffer = Encoding.UTF8.GetBytes("-IMG;" + imageBytes.Length.ToString());
+           
+            byte[] buffer = Encoding.UTF8.GetBytes(meta);
 
             
             foreach (TcpClient client in idClient.Keys)
@@ -227,7 +223,15 @@ namespace chatProgram
             klienterRichtxtbx.Text = "";
             foreach (String id in idClient.Values)
             {
-                LogMessage(id);
+                
+                if (klienterRichtxtbx.InvokeRequired)
+                {
+                    klienterRichtxtbx.Invoke(new MethodInvoker(delegate { tbxInkorg.AppendText(id + Environment.NewLine); }));
+                }
+                else
+                {
+                    klienterRichtxtbx.AppendText(id + Environment.NewLine);
+                }
             }
         }
     }

@@ -56,27 +56,32 @@ namespace chatKlient
             try
             {
                 byte[] buffer = new byte[1024];
-               
 
-                
+
+
                 while (client.Connected)
                 {
 
                     int n = await stream.ReadAsync(buffer, 0, buffer.Length); // metoden kör på sin egna tråd så den kan blocka den utan problem
-                    if (n == 0) break; // Connection closed.
-                    string inp = Encoding.UTF8.GetString(buffer, 0, n).Trim();
+                    if (n == 0)
+                        break; // Connection closed.
+                    string inp = Encoding.UTF8.GetString(buffer, 0, n);
                     if (inp == "")
                         continue;
-                    if (inp.StartsWith("-IMG;")) //inp.Split(';')[0] == "-IMG"
+                    string[] splitInp = inp.Split(';');
+                    if (splitInp[0] == "-IMG") //"-IMG;" + imageBytes.Length.ToString() + $";{userId}"
                     {
-                        await ReciveImage(int.Parse(inp.Split(';')[1]));
+
+                        Image? img = await ReciveImage(int.Parse(splitInp[1]));
+                        if (img != null)
+                            AddLink(img, splitInp[2]);
                         continue;
                     }
-                        
+
                     DisplayMessage(inp);
-                        
+
                 }
-                
+
             }
             catch (Exception ex)
             {
@@ -95,9 +100,9 @@ namespace chatKlient
                 chatWin.AppendText(message + Environment.NewLine);
             }
         }
-        private void AddLink(Image img)
+        private void AddLink(Image img, string userId)
         {
-            string text = "skickade en bild tryck här för att visa: " + System.DateTime.Now.ToString();
+            string text = $"{userId} skickade en bild tryck här för att visa: " + DateTime.Now.ToString(); // tid så meddelandet är unikt
             int start = chatWin.TextLength;
             DisplayMessage(text);
             chatWin.Select(start, text.Length);
@@ -118,7 +123,7 @@ namespace chatKlient
             }
             else
             {
-                
+
                 if (linkActions.TryGetValue(e.LinkText, out ImageMsg i))
                 {
 
@@ -136,7 +141,7 @@ namespace chatKlient
                 client = new TcpClient("127.0.0.1", 12345);
                 stream = client.GetStream();
                 Task.Run(ReceiveMessage);
-                
+
             }
             catch (Exception ex)
             {
@@ -145,7 +150,7 @@ namespace chatKlient
         }
 
 
-        private async void button1_Click(object sender, EventArgs e)
+        private async void connectBtn_Click(object sender, EventArgs e)
         {
 
 
@@ -157,8 +162,8 @@ namespace chatKlient
 
                 byte[] data = Encoding.UTF8.GetBytes(userId);
                 await stream.WriteAsync(data, 0, data.Length);
-                button1.Enabled = false;
-                button1.Text = "Ansluten";
+                connectBtn.Enabled = false;
+                connectBtn.Text = "Ansluten";
                 byte[] bytes = new byte[256];
                 int bytesRead = await stream.ReadAsync(bytes, 0, bytes.Length);
                 chatWin.Text = Encoding.UTF8.GetString(bytes, 0, bytesRead);
@@ -175,8 +180,8 @@ namespace chatKlient
                 stream.Close();
             if (client != null)
                 client.Close();
-            button1.Enabled = true;
-            button1.Text = "Anslut";
+            connectBtn.Enabled = true;
+            connectBtn.Text = "Anslut";
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
@@ -184,12 +189,8 @@ namespace chatKlient
             DisconnectFromServer();
         }
 
-        private void button2_Click(object sender, EventArgs e)
-        {
-            AddLink(Image.FromFile(@"C:\Users\olive\Pictures\rös\20231207_221449.jpg"));
-        }
 
-        private void FileBtn_Click(object sender, EventArgs e)
+        private async void FileBtn_Click(object sender, EventArgs e)
         {
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
@@ -201,8 +202,8 @@ namespace chatKlient
                     try
                     {
                         Image img = Image.FromFile(openFileDialog.FileName);
-                        // Log the image locally
-                        //AddLink(img);
+
+                        AddLink(img, "Du");
 
                         // Convert image to byte array
                         byte[] imageBytes;
@@ -213,7 +214,7 @@ namespace chatKlient
                         }
 
                         // Send the byte array over the network stream
-                        SendImage(imageBytes);
+                        await SendImage(imageBytes);
                     }
                     catch (Exception ex)
                     {
@@ -230,13 +231,14 @@ namespace chatKlient
                 byte[] buffer = Encoding.UTF8.GetBytes("-IMG;" + imageBytes.Length.ToString() + $";{userId}");
                 await stream.WriteAsync(buffer, 0, buffer.Length);
                 await stream.WriteAsync(imageBytes, 0, imageBytes.Length);
+
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Error sending image: " + ex.Message);
             }
         }
-        private async Task ReciveImage(int imageSize)
+        private async Task<Image?> ReciveImage(int imageSize)
         {
 
             byte[] buffer = new byte[1024];
@@ -260,17 +262,18 @@ namespace chatKlient
                 {
                     ms.Position = 0;
 
-                    AddLink(Image.FromStream(ms));
+                    return Image.FromStream(ms);
 
                 }
                 else
                 {
-                    // Handle incomplete image data
+
                     MessageBox.Show("Incomplete image data received.", Text);
+                    return null;
                 }
             }
 
         }
     }
-    
+
 }

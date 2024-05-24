@@ -31,10 +31,9 @@
             btnSkicka = new Button();
             txtSendBox = new TextBox();
             chatWin = new RichTextBox();
-            button1 = new Button();
+            connectBtn = new Button();
             usernameTxtbox = new TextBox();
             label1 = new Label();
-            button2 = new Button();
             FileBtn = new Button();
             SuspendLayout();
             // 
@@ -65,15 +64,15 @@
             chatWin.TabIndex = 2;
             chatWin.Text = "";
             // 
-            // button1
+            // connectBtn
             // 
-            button1.Location = new Point(466, 112);
-            button1.Name = "button1";
-            button1.Size = new Size(75, 23);
-            button1.TabIndex = 3;
-            button1.Text = "Anslut";
-            button1.UseVisualStyleBackColor = true;
-            button1.Click += button1_Click;
+            connectBtn.Location = new Point(466, 112);
+            connectBtn.Name = "connectBtn";
+            connectBtn.Size = new Size(75, 23);
+            connectBtn.TabIndex = 3;
+            connectBtn.Text = "Anslut";
+            connectBtn.UseVisualStyleBackColor = true;
+            connectBtn.Click += connectBtn_Click;
             // 
             // usernameTxtbox
             // 
@@ -90,16 +89,6 @@
             label1.Size = new Size(89, 15);
             label1.TabIndex = 5;
             label1.Text = "Användarnamn";
-            // 
-            // button2
-            // 
-            button2.Location = new Point(71, 141);
-            button2.Name = "button2";
-            button2.Size = new Size(75, 23);
-            button2.TabIndex = 6;
-            button2.Text = "button2";
-            button2.UseVisualStyleBackColor = true;
-            button2.Click += button2_Click;
             // 
             // FileBtn
             // 
@@ -118,10 +107,9 @@
             BackColor = Color.FromArgb(64, 70, 75);
             ClientSize = new Size(800, 450);
             Controls.Add(FileBtn);
-            Controls.Add(button2);
             Controls.Add(label1);
             Controls.Add(usernameTxtbox);
-            Controls.Add(button1);
+            Controls.Add(connectBtn);
             Controls.Add(chatWin);
             Controls.Add(txtSendBox);
             Controls.Add(btnSkicka);
@@ -137,10 +125,9 @@
         private Button btnSkicka;
         private TextBox txtSendBox;
         private RichTextBox chatWin;
-        private Button button1;
+        private Button connectBtn;
         private TextBox usernameTxtbox;
         private Label label1;
-        private Button button2;
         public Button FileBtn;
     }
 }
